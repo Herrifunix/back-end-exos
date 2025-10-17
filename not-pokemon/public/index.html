@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pokémon API - Interface Admin</title>
+  </head>
+  <body>
+    <h1> Système Pokémon - Interface d'Administration</h1>
+
+    <!-- Section Dresseurs -->
+    <section>
+      <h2> Gestion des Dresseurs</h2>
+
+      <h3>Créer un Dresseur</h3>
+      <input type="text" id="trainerName" placeholder="Nom du dresseur" />
+      <button onclick="createTrainer()">Créer Dresseur</button>
+
+      <h3>Liste des Dresseurs</h3>
+      <button onclick="loadTrainers()">Recharger</button>
+      <div id="trainersList"></div>
+    </section>
+
+    <!-- Section Attaques -->
+    <section>
+      <h2> Gestion des Attaques</h2>
+
+      <h3>Créer une Attaque</h3>
+      <input type="text" id="attackName" placeholder="Nom de l'attaque" />
+      <input type="number" id="attackDamage" placeholder="Dégâts" min="1" />
+      <input
+        type="number"
+        id="attackLimit"
+        placeholder="Limite d'usage"
+        min="1"
+      />
+      <button onclick="createAttack()">Créer Attaque</button>
+
+      <h3>Liste des Attaques</h3>
+      <button onclick="loadAttacks()">Recharger</button>
+      <div id="attacksList"></div>
+    </section>
+
+    <!-- Section Pokémon -->
+    <section>
+      <h2> Gestion des Pokémon</h2>
+
+      <h3>Créer un Pokémon</h3>
+      <input type="text" id="pokemonName" placeholder="Nom du Pokémon" />
+      <input type="number" id="pokemonHP" placeholder="Points de vie" min="1" />
+      <button onclick="createPokemon()">Créer Pokémon</button>
+
+      <h3>Liste des Pokémon</h3>
+      <button onclick="loadPokemons()">Recharger</button>
+      <div id="pokemonsList"></div>
+    </section>
+
+    <!-- Section Attribution Pokémon -->
+    <section>
+      <h2>Attribution des Pokémon aux Dresseurs</h2>
+
+      <h3>Attribuer un Pokémon à un Dresseur</h3>
+      <select id="assignPokemon">
+        <option value="">Choisir un Pokémon sans dresseur</option>
+      </select>
+      <select id="assignTrainer">
+        <option value="">Choisir un dresseur</option>
+      </select>
+      <button onclick="assignPokemonToTrainer()">Attribuer</button>
+
+      <h3>Pokémon sans Dresseur</h3>
+      <button onclick="loadUnassignedPokemons()">Recharger</button>
+      <div id="unassignedPokemonsList"></div>
+    </section>
+
+    <!-- Section Actions Pokémon -->
+    <section>
+      <h2>Actions Pokémon</h2>
+
+      <h3>Apprendre une Attaque</h3>
+      <select id="learnPokemon">
+        <option value="">Choisir un Pokémon</option>
+      </select>
+      <select id="learnAttack">
+        <option value="">Choisir une attaque</option>
+      </select>
+      <button onclick="learnAttack()">Apprendre</button>
+
+      <h3>Soigner un Pokémon</h3>
+      <select id="healPokemon">
+        <option value="">Choisir un Pokémon à soigner</option>
+      </select>
+      <button onclick="healPokemon()">Soigner</button>
+    </section>
+
+    <!-- Section Combat -->
+    <section>
+      <h2>Système de Combat</h2>
+
+      <h3>Sélection des Dresseurs</h3>
+      <select id="trainer1">
+        <option value="">Dresseur 1</option>
+      </select>
+      <select id="trainer2">
+        <option value="">Dresseur 2</option>
+      </select>
+
+      <h3>Types de Combat</h3>
+      <button onclick="randomChallenge()">🎲 Défi Aléatoire</button>
+      <button onclick="arena1()">🏟️ Arène 1 (100 combats)</button>
+      <button onclick="deterministicChallenge()">⚔️ Défi Déterministe</button>
+      <button onclick="arena2()">🏛️ Arène 2 (Élimination)</button>
+
+      <h3>Résultats des Combats</h3>
+      <div id="combatResults"></div>
+    </section>
+
+    <!-- Section Logs -->
+    <section>
+      <h2>📋 Messages et Logs</h2>
+      <div id="messages"></div>
+    </section>
+
+    <script>
+      const API_BASE = "http://localhost:3001";
+
+ 
+      function showMessage(message, type = "info") {
+        const messagesDiv = document.getElementById("messages");
+        const messageElement = document.createElement("div");
+        messageElement.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        messageElement.style.color =
+          type === "error" ? "red" : type === "success" ? "green" : "black";
+        messagesDiv.appendChild(messageElement);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+
+  
+      async function apiRequest(endpoint, method = "GET", body = null) {
+        try {
+          const options = {
+            method,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          };
+
+          if (body) {
+            options.body = JSON.stringify(body);
+          }
+
+          const response = await fetch(`${API_BASE}${endpoint}`, options);
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "Erreur API");
+          }
+
+          return data;
+        } catch (error) {
+          showMessage(`Erreur: ${error.message}`, "error");
+          throw error;
+        }
+      }
+
+    
+      async function createTrainer() {
+        const name = document.getElementById("trainerName").value.trim();
+        if (!name) {
+          showMessage("Veuillez saisir un nom pour le dresseur", "error");
+          return;
+        }
+
+        try {
+          const trainer = await apiRequest("/trainers", "POST", { name });
+          showMessage(
+            `Dresseur "${trainer.name}" créé avec succès!`,
+            "success"
+          );
+          document.getElementById("trainerName").value = "";
+          await loadTrainers();
+          await updateTrainerSelects();
+        } catch (error) {
+     
+        }
+      }
+
+      async function loadTrainers() {
+        try {
+          const trainers = await apiRequest("/trainers");
+          displayTrainers(trainers);
+          fillTrainerSelects(trainers);
+        } catch (error) {
+       
+        }
+      }
+
+      async function loadTrainerDetails(trainerId) {
+        try {
+          const trainer = await apiRequest(`/trainers/${trainerId}`);
+          showMessage(`=== Détails de ${trainer.name} ===`, "info");
+          showMessage(
+            `Niveau: ${trainer.level}, XP: ${trainer.experience}`,
+            "info"
+          );
+
+          if (trainer.pokemons && trainer.pokemons.length > 0) {
+            trainer.pokemons.forEach((pokemon) => {
+              const attacksText = pokemon.attacks
+                ? pokemon.attacks
+                    .map(
+                      (a) => `${a.name} (${a.current_usage}/${a.usage_limit})`
+                    )
+                    .join(", ")
+                : "Aucune attaque";
+              showMessage(
+                `  🐾 ${pokemon.name}: ${pokemon.life_points}/${pokemon.max_life_points} PV, Attaques: ${attacksText}`,
+                "info"
+              );
+            });
+          } else {
+            showMessage("  Aucun Pokémon", "info");
+          }
+        } catch (error) {}
+      }
+
+      async function createAttack() {
+        const name = document.getElementById("attackName").value.trim();
+        const damage = parseInt(document.getElementById("attackDamage").value);
+        const usage_limit = parseInt(
+          document.getElementById("attackLimit").value
+        );
+
+        if (!name || !damage || !usage_limit) {
+          showMessage("Veuillez remplir tous les champs de l'attaque", "error");
+          return;
+        }
+
+        try {
+          const attack = await apiRequest("/attacks", "POST", {
+            name,
+            damage,
+            usage_limit,
+          });
+          showMessage(`Attaque "${attack.name}" créée avec succès!`, "success");
+          document.getElementById("attackName").value = "";
+          document.getElementById("attackDamage").value = "";
+          document.getElementById("attackLimit").value = "";
+          await loadAttacks();
+          await updateAttackSelects();
+        } catch (error) {}
+      }
+
+      async function loadAttacks() {
+        try {
+          const attacks = await apiRequest("/attacks");
+          displayAttacks(attacks);
+          fillAttackSelects(attacks);
+        } catch (error) {}
+      }
+
+      async function createPokemon() {
+        const name = document.getElementById("pokemonName").value.trim();
+        const life_points = parseInt(
+          document.getElementById("pokemonHP").value
+        );
+
+        if (!name || !life_points) {
+          showMessage("Veuillez remplir le nom et les PV du Pokémon", "error");
+          return;
+        }
+
+        try {
+          const pokemon = await apiRequest("/pokemons", "POST", {
+            name,
+            life_points,
+            trainer_id: null,
+          });
+          showMessage(
+            `Pokémon "${pokemon.name}" créé avec succès (sans dresseur)!`,
+            "success"
+          );
+          document.getElementById("pokemonName").value = "";
+          document.getElementById("pokemonHP").value = "";
+          await loadPokemons();
+          await updatePokemonSelects();
+          await loadUnassignedPokemons();
+        } catch (error) {}
+      }
+
+      async function loadPokemons() {
+        try {
+          const pokemons = await apiRequest("/pokemons");
+          displayPokemons(pokemons);
+          fillPokemonSelects(pokemons);
+          fillAssignPokemonSelect(pokemons);
+        } catch (error) {}
+      }
+
+      async function loadUnassignedPokemons() {
+        try {
+          const pokemons = await apiRequest("/pokemons");
+          const unassigned = pokemons.filter((p) => !p.trainer_id);
+
+          const container = document.getElementById("unassignedPokemonsList");
+          if (unassigned.length === 0) {
+            container.innerHTML =
+              '<div style="color: gray;">Aucun Pokémon sans dresseur</div>';
+          } else {
+            container.innerHTML = unassigned
+              .map(
+                (pokemon) =>
+                  `<div>
+                            ${pokemon.name} - ${pokemon.life_points}/${pokemon.max_life_points} PV
+                        </div>`
+              )
+              .join("");
+          }
+
+          fillAssignPokemonSelect(pokemons);
+        } catch (error) {}
+      }
+
+      async function assignPokemonToTrainer() {
+        const pokemonId = document.getElementById("assignPokemon").value;
+        const trainerId = document.getElementById("assignTrainer").value;
+
+        if (!pokemonId || !trainerId) {
+          showMessage(
+            "Veuillez sélectionner un Pokémon et un dresseur",
+            "error"
+          );
+          return;
+        }
+
+        try {
+          await apiRequest(`/pokemons/${pokemonId}/assign-trainer`, "PUT", {
+            trainer_id: parseInt(trainerId),
+          });
+          showMessage("Pokémon attribué avec succès!", "success");
+          document.getElementById("assignPokemon").value = "";
+          document.getElementById("assignTrainer").value = "";
+          await loadPokemons();
+          await loadUnassignedPokemons();
+        } catch (error) {}
+      }
+
+      async function learnAttack() {
+        const pokemonId = document.getElementById("learnPokemon").value;
+        const attackId = document.getElementById("learnAttack").value;
+
+        if (!pokemonId || !attackId) {
+          showMessage(
+            "Veuillez sélectionner un Pokémon et une attaque",
+            "error"
+          );
+          return;
+        }
+
+        try {
+          await apiRequest(`/pokemons/${pokemonId}/learn-attack`, "POST", {
+            attack_id: parseInt(attackId),
+          });
+          showMessage("Attaque apprise avec succès!", "success");
+          await loadPokemons();
+        } catch (error) {}
+      }
+
+      async function healPokemon() {
+        const pokemonId = document.getElementById("healPokemon").value;
+
+        if (!pokemonId) {
+          showMessage("Veuillez sélectionner un Pokémon à soigner", "error");
+          return;
+        }
+
+        try {
+          await apiRequest(`/pokemons/${pokemonId}/heal`, "POST");
+          showMessage("Pokémon soigné avec succès!", "success");
+          await loadPokemons();
+        } catch (error) {}
+      }
+
+      async function randomChallenge() {
+        const trainer1_id = document.getElementById("trainer1").value;
+        const trainer2_id = document.getElementById("trainer2").value;
+
+        if (!trainer1_id || !trainer2_id) {
+          showMessage("Veuillez sélectionner deux dresseurs", "error");
+          return;
+        }
+        if (trainer1_id === trainer2_id) {
+          showMessage("Veuillez choisir deux dresseurs différents", "error");
+          return;
+        }
+
+        try {
+          showMessage("🎲 Démarrage du défi aléatoire...", "info");
+          const result = await apiRequest("/combat/random-challenge", "POST", {
+            trainer1_id: parseInt(trainer1_id),
+            trainer2_id: parseInt(trainer2_id),
+          });
+
+          document.getElementById(
+            "combatResults"
+          ).innerHTML = `<strong>🏆 Vainqueur: ${result.winner.name}</strong><br>
+                     Niveau: ${result.winner.level}, XP: ${result.winner.experience}`;
+          showMessage(
+            `Défi aléatoire terminé! Vainqueur: ${result.winner.name}`,
+            "success"
+          );
+          await loadTrainers();
+        } catch (error) {}
+      }
+
+      async function arena1() {
+        const trainer1_id = document.getElementById("trainer1").value;
+        const trainer2_id = document.getElementById("trainer2").value;
+
+        if (!trainer1_id || !trainer2_id) {
+          showMessage("Veuillez sélectionner deux dresseurs", "error");
+          return;
+        }
+        if (trainer1_id === trainer2_id) {
+          showMessage("Veuillez choisir deux dresseurs différents", "error");
+          return;
+        }
+
+        try {
+          showMessage("🏟️ Démarrage de l'Arène 1 (100 combats)...", "info");
+          const result = await apiRequest("/combat/arena1", "POST", {
+            trainer1_id: parseInt(trainer1_id),
+            trainer2_id: parseInt(trainer2_id),
+          });
+
+          document.getElementById(
+            "combatResults"
+          ).innerHTML = `<strong>🏆 Vainqueur Arène 1: ${result.winner.name}</strong><br>
+                     Niveau: ${result.winner.level}, XP: ${result.winner.experience}<br>
+                     Total combats: ${result.total_combats}`;
+          showMessage(
+            `Arène 1 terminée! Vainqueur: ${result.winner.name}`,
+            "success"
+          );
+          await loadTrainers();
+        } catch (error) {}
+      }
+
+      async function deterministicChallenge() {
+        const trainer1_id = document.getElementById("trainer1").value;
+        const trainer2_id = document.getElementById("trainer2").value;
+
+        if (!trainer1_id || !trainer2_id) {
+          showMessage("Veuillez sélectionner deux dresseurs", "error");
+          return;
+        }
+        if (trainer1_id === trainer2_id) {
+          showMessage("Veuillez choisir deux dresseurs différents", "error");
+          return;
+        }
+
+        try {
+          showMessage("⚔️ Démarrage du défi déterministe...", "info");
+          const result = await apiRequest(
+            "/combat/deterministic-challenge",
+            "POST",
+            {
+              trainer1_id: parseInt(trainer1_id),
+              trainer2_id: parseInt(trainer2_id),
+            }
+          );
+
+          document.getElementById(
+            "combatResults"
+          ).innerHTML = `<strong>🏆 Vainqueur: ${result.winner.name}</strong><br>
+                     Niveau: ${result.winner.level}, XP: ${result.winner.experience}`;
+          showMessage(
+            `Défi déterministe terminé! Vainqueur: ${result.winner.name}`,
+            "success"
+          );
+          await loadTrainers();
+          await loadPokemons();
+        } catch (error) {}
+      }
+
+      async function arena2() {
+        const trainer1_id = document.getElementById("trainer1").value;
+        const trainer2_id = document.getElementById("trainer2").value;
+
+        if (!trainer1_id || !trainer2_id) {
+          showMessage("Veuillez sélectionner deux dresseurs", "error");
+          return;
+        }
+        if (trainer1_id === trainer2_id) {
+          showMessage("Veuillez choisir deux dresseurs différents", "error");
+          return;
+        }
+
+        try {
+          showMessage(
+            "🏛️ Démarrage de l'Arène 2 (jusqu'à élimination)...",
+            "info"
+          );
+          const result = await apiRequest("/combat/arena2", "POST", {
+            trainer1_id: parseInt(trainer1_id),
+            trainer2_id: parseInt(trainer2_id),
+          });
+
+          document.getElementById(
+            "combatResults"
+          ).innerHTML = `<strong>🏆 Vainqueur Arène 2: ${result.winner.name}</strong><br>
+                     Niveau: ${result.winner.level}, XP: ${result.winner.experience}`;
+          showMessage(
+            `Arène 2 terminée! Vainqueur: ${result.winner.name}`,
+            "success"
+          );
+          await loadTrainers();
+          await loadPokemons();
+        } catch (error) {}
+      }
+
+      async function updateTrainerSelects() {
+        try {
+          const trainers = await apiRequest("/trainers");
+          fillTrainerSelects(trainers);
+        } catch (error) {}
+      }
+
+      async function updateAttackSelects() {
+        try {
+          const attacks = await apiRequest("/attacks");
+          fillAttackSelects(attacks);
+        } catch (error) {}
+      }
+
+      async function updatePokemonSelects() {
+        try {
+          const pokemons = await apiRequest("/pokemons");
+          fillPokemonSelects(pokemons);
+        } catch (error) {}
+      }
+
+      window.addEventListener("load", async function () {
+        showMessage("Interface chargée. Connexion à l'API...", "info");
+
+        try {
+          await apiRequest("/api");
+          showMessage("✅ Connexion API réussie!", "success");
+
+          showMessage("📥 Chargement des données...", "info");
+          const [trainers, attacks, pokemons] = await Promise.all([
+            apiRequest("/trainers"),
+            apiRequest("/attacks"),
+            apiRequest("/pokemons"),
+          ]);
+
+          displayTrainers(trainers);
+          displayAttacks(attacks);
+          displayPokemons(pokemons);
+
+          fillTrainerSelects(trainers);
+          fillAttackSelects(attacks);
+          fillPokemonSelects(pokemons);
+          fillAssignPokemonSelect(pokemons);
+
+          const unassigned = pokemons.filter((p) => !p.trainer_id);
+          const unassignedContainer = document.getElementById(
+            "unassignedPokemonsList"
+          );
+          if (unassigned.length === 0) {
+            unassignedContainer.innerHTML =
+              '<div style="color: gray;">Aucun Pokémon sans dresseur</div>';
+          } else {
+            unassignedContainer.innerHTML = unassigned
+              .map(
+                (pokemon) =>
+                  `<div>
+                            ${pokemon.name} - ${pokemon.life_points}/${pokemon.max_life_points} PV
+                        </div>`
+              )
+              .join("");
+          }
+
+          showMessage(
+            `✅ ${trainers.length} dresseurs, ${attacks.length} attaques, ${pokemons.length} pokémon chargés!`,
+            "success"
+          );
+          showMessage("Interface prête à utiliser!", "success");
+        } catch (error) {
+          showMessage(
+            "Impossible de se connecter à l'API. Assurez-vous que le serveur est démarré.",
+            "error"
+          );
+        }
+      });
+
+      function displayTrainers(trainers) {
+        const container = document.getElementById("trainersList");
+        container.innerHTML = trainers
+          .map(
+            (trainer) =>
+              `<div>
+                    <strong>${trainer.name}</strong> - Niveau ${trainer.level} (${trainer.experience} XP)
+                    <button onclick="loadTrainerDetails(${trainer.id})">Détails</button>
+                </div>`
+          )
+          .join("");
+      }
+
+      function displayAttacks(attacks) {
+        const container = document.getElementById("attacksList");
+        container.innerHTML = attacks
+          .map(
+            (attack) =>
+              `<div>${attack.name} - ${attack.damage} dégâts (${attack.usage_limit} usages)</div>`
+          )
+          .join("");
+      }
+
+      function displayPokemons(pokemons) {
+        const container = document.getElementById("pokemonsList");
+        container.innerHTML = pokemons
+          .map(
+            (pokemon) =>
+              `<div>
+                    ${pokemon.name} - ${pokemon.life_points}/${
+                pokemon.max_life_points
+              } PV
+                    ${
+                      pokemon.trainer_name
+                        ? `(Dresseur: ${pokemon.trainer_name})`
+                        : "(Sans dresseur)"
+                    }
+                </div>`
+          )
+          .join("");
+      }
+
+      function fillTrainerSelects(trainers) {
+        const selects = ["trainer1", "trainer2", "assignTrainer"];
+
+        selects.forEach((selectId) => {
+          const select = document.getElementById(selectId);
+          const firstOption = select.options[0];
+          select.innerHTML = "";
+          select.appendChild(firstOption);
+
+          trainers.forEach((trainer) => {
+            const option = document.createElement("option");
+            option.value = trainer.id;
+            option.textContent = `${trainer.name} (Niv. ${trainer.level})`;
+            select.appendChild(option);
+          });
+        });
+      }
+
+      function fillAttackSelects(attacks) {
+        const select = document.getElementById("learnAttack");
+        const firstOption = select.options[0];
+        select.innerHTML = "";
+        select.appendChild(firstOption);
+
+        attacks.forEach((attack) => {
+          const option = document.createElement("option");
+          option.value = attack.id;
+          option.textContent = `${attack.name} (${attack.damage} dégâts)`;
+          select.appendChild(option);
+        });
+      }
+
+      function fillPokemonSelects(pokemons) {
+        const selects = ["learnPokemon", "healPokemon"];
+
+        selects.forEach((selectId) => {
+          const select = document.getElementById(selectId);
+          const firstOption = select.options[0];
+          select.innerHTML = "";
+          select.appendChild(firstOption);
+
+          pokemons.forEach((pokemon) => {
+            const option = document.createElement("option");
+            option.value = pokemon.id;
+            option.textContent = `${pokemon.name} (${pokemon.life_points}/${pokemon.max_life_points} PV)`;
+            select.appendChild(option);
+          });
+        });
+      }
+
+      function fillAssignPokemonSelect(pokemons) {
+        const select = document.getElementById("assignPokemon");
+        const firstOption = select.options[0];
+        select.innerHTML = "";
+        select.appendChild(firstOption);
+
+        const unassigned = pokemons.filter((p) => !p.trainer_id);
+
+        unassigned.forEach((pokemon) => {
+          const option = document.createElement("option");
+          option.value = pokemon.id;
+          option.textContent = `${pokemon.name} (${pokemon.life_points}/${pokemon.max_life_points} PV)`;
+          select.appendChild(option);
+        });
+      }
+    </script>
+  </body>
+</html>

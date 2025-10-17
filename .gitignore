@@ -8,6 +8,8 @@ npm-debug.log*
 
 node_modules/
 
+not-pokemon/.env
+not-pokemon/node_modules/
 
 .npm
 
